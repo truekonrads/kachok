@@ -6,6 +6,7 @@ from requests.auth import HTTPBasicAuth
 import requests
 import multiprocessing as mp
 import fire
+import glob
 # Disable ANSI colours on windows
 import os
 if os.name == 'nt':
@@ -85,28 +86,32 @@ class Kachok(object):
             "Posted a batch of {} in {} seconds".format(len(batch), delta))
         return errors
 
-    def pumpJSONND(self, index, filepath, batchsize=3200, doctype="securitylogs", errordir=None):
-        fp = open(filepath)
-        path = "{}/_bulk".format(index)
-        accum = []
-        head = json.dumps({"index": {"_index": index, "_type": doctype}})
-        errors = []
-        for i, line in enumerate(fp.readlines()):
-            accum.append(head+"\n"+line)
-            if len(accum) >= batchsize:
+    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None):
+        all_logs = [item for sublist in [
+        glob.glob(k) for k in logfiles] for item in sublist]
+        files = sorted(set(all_logs))
+        for filepath in files:
+            fp = open(filepath)
+            path = "{}/_bulk".format(index)
+            accum = []
+            head = json.dumps({"index": {"_index": index, "_type": doctype}})
+            errors = []
+            for i, line in enumerate(fp.readlines()):
+                accum.append(head+"\n"+line)
+                if len(accum) >= batchsize:
+                    errors.extend(self._postBatch(path, accum))
+                    accum = []
+            if accum:  # Some left
                 errors.extend(self._postBatch(path, accum))
-                accum = []
-        if accum:  # Some left
-            errors.extend(self._postBatch(path, accum))
-        if errors:
-            if errordir:
-                errfile = PurePath(errordir,
-                                   PurePath(filepath).name)
-            else:
-                errfile = filepath+".err"
-            errfp = open(errfile, "w")
-            for i, err, line in errors:
-                errfp.write("---\n{} - {}\n{}\n---\n".format(i, err, line))
+            if errors:
+                if errordir:
+                    errfile = PurePath(errordir,
+                                    PurePath(filepath).name)
+                else:
+                    errfile = filepath+".err"
+                errfp = open(errfile, "w")
+                for i, err, line in errors:
+                    errfp.write("---\n{} - {}\n{}\n---\n".format(i, err, line))
 
     def makeIndex(self, index, maxfields=2000):
         try:
