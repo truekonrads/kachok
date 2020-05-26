@@ -46,4 +46,14 @@ FLAGS
 NOTES
     You can also use flags syntax for POSITIONAL ARGUMENTS
     
-  ``
+  ```
+
+# Examples
+
+## Make Index 
+```./kachok.py --endpoint=http://localhost:9200 makeIndex myindexname```
+
+## Upload data 
+```./kachok.py --endpoint=http://localhost:9200 pumpJSONND myindexname /path/to/files/*.json```
+
+You can use glob syntax (e.g '**' for recursive)
