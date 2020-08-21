@@ -52,13 +52,17 @@ class Kachok(object):
                 "Status code for {} is not 200".format(url), response)
         return response
 
-    def __init__(self, endpoint, index=None, username=None, password=None, debug=False):
+    def __init__(self, endpoint, 
+            #index=None, 
+            username=None, 
+            password=None, 
+            debug=False):
         self.endopoint = endpoint
         if username and password:
             self.auth = HTTPBasicAuth(username, password)
         else:
             self.auth = None
-        self.index = index
+        #self.index = index
         self.logger = logging.getLogger("kachok")
         if debug:
             self.logger.setLevel(logging.DEBUG)
@@ -88,6 +92,16 @@ class Kachok(object):
         return errors
 
     def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None,progress=True):
+        """
+        Pump new-line delimited JSON documents to elasticsearch
+        Args:
+            index: elasticsearch index
+            logfiles: list of files to import
+            batchsize: batch size per request
+            doctype: document type
+            errordir: directory where to output errors (if unspecified, outputs to same directory as file)
+            progress: display progress bar
+        """        
         all_logs = [item for sublist in [
                     glob.glob(k,recursive=True) for k in logfiles] 
                     for item in sublist]
