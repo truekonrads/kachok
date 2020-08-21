@@ -66,7 +66,7 @@ class Kachok(object):
 
     def _postBatch(self, path, batch):
         then = datetime.now()
-        response = self._post(path, data="\n".join(batch))
+        response = self._post(path, data="\n".join(batch).encode('utf8'))
         body = response.content
         errors = []
         if b'"errors":false' in body:
@@ -91,16 +91,30 @@ class Kachok(object):
         glob.glob(k) for k in logfiles] for item in sublist]
         files = sorted(set(all_logs))
         for filepath in files:
-            fp = open(filepath)
+
+            self.logger.info(f"Processing `{filepath}`")
+            if not os.path.isfile(filepath):
+                self.logger.warning(f"Skipping `{filepath}` as it is not a file")
+                continue
+            fp = open(filepath,encoding="utf-8",errors='ignore')
             path = "{}/_bulk".format(index)
             accum = []
             head = json.dumps({"index": {"_index": index, "_type": doctype}})
             errors = []
-            for i, line in enumerate(fp.readlines()):
-                accum.append(head+"\n"+line)
-                if len(accum) >= batchsize:
-                    errors.extend(self._postBatch(path, accum))
-                    accum = []
+            i=0
+            try: 
+                while True:
+                    line=fp.readline()
+                    if line=='':
+                        break
+                    accum.append(head+"\n"+line)
+                    if len(accum) >= batchsize:
+                       errors.extend(self._postBatch(path, accum))
+                       accum = []
+                    i+=1
+            except UnicodeError as e:
+                self.logger.error(f"Unable to decode Unicode {filepath}:{i}")
+                raise e
             if accum:  # Some left
                 errors.extend(self._postBatch(path, accum))
             if errors:
@@ -113,9 +127,15 @@ class Kachok(object):
                 for i, err, line in errors:
                     errfp.write("---\n{} - {}\n{}\n---\n".format(i, err, line))
 
-    def makeIndex(self, index, maxfields=2000):
+    def makeIndex(self, index, maxfields=2000,shards=16):
         try:
-            self._put(index)
+            indexsettings = {
+            'settings': {
+                'index.number_of_shards': shards
+            }
+        }
+
+            self._put(index,json=indexsettings)
         except KachokException as e:
             response = e.args[1]
             assert type(response) == requests.Response
@@ -128,7 +148,7 @@ class Kachok(object):
                 raise e
         indexsettings = {
             'settings': {
-                'index.mapping.total_fields.limit': maxfields
+                'index.mapping.total_fields.limit': maxfields,
             }
         }
         self._put(index+"/_settings", json=indexsettings)
