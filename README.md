@@ -1,5 +1,5 @@
 # kachok
-A simple json-nd data pumper to elasticsearch; no backpressure support.
+A simple json-nd data pumper to elasticsearch; no backpressure support (yet!).
 Use it when logstash fails you or when you need a solid base to start from.
 
 
