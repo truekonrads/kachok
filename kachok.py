@@ -9,6 +9,7 @@ import fire
 import glob
 # Disable ANSI colours on windows
 import os
+import sys
 if os.name == 'nt':
     os.environ['ANSI_COLORS_DISABLED'] = "1"
 try:
@@ -16,7 +17,7 @@ try:
 except ImportError:
     print("WARNING: ujson not found, install it for better performance")
     import json
-
+from tqdm import tqdm
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -86,16 +87,27 @@ class Kachok(object):
             "Posted a batch of {} in {} seconds".format(len(batch), delta))
         return errors
 
-    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None):
+    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None,progress=True):
         all_logs = [item for sublist in [
-        glob.glob(k) for k in logfiles] for item in sublist]
+                    glob.glob(k,recursive=True) for k in logfiles] 
+                    for item in sublist]
         files = sorted(set(all_logs))
-        for filepath in files:
 
-            self.logger.info(f"Processing `{filepath}`")
+        if progress:
+            filebar=tqdm(desc='Files',total=len(files))
+            linebar=tqdm()
+
+        for filepath in files:
             if not os.path.isfile(filepath):
                 self.logger.warning(f"Skipping `{filepath}` as it is not a file")
                 continue
+            msg=f"Processing `{filepath}`"
+            if progress:
+                filebar.set_description_str(msg)
+                linebar.reset(total=os.path.getsize(filepath))
+            else:
+                self.logger.info(msg)
+
             fp = open(filepath,encoding="utf-8",errors='ignore')
             path = "{}/_bulk".format(index)
             accum = []
@@ -107,9 +119,13 @@ class Kachok(object):
                     line=fp.readline()
                     if line=='':
                         break
+                    if progress:
+                        linebar.update(len(line))
                     accum.append(head+"\n"+line)
                     if len(accum) >= batchsize:
-                       errors.extend(self._postBatch(path, accum))
+                       reqerr=self._postBatch(path, accum)
+                       self.logger.debug(f"Errors: {reqerr}")
+                       errors.extend(reqerr)
                        accum = []
                     i+=1
             except UnicodeError as e:
@@ -126,6 +142,8 @@ class Kachok(object):
                 errfp = open(errfile, "w")
                 for i, err, line in errors:
                     errfp.write("---\n{} - {}\n{}\n---\n".format(i, err, line))
+            if progress:
+                filebar.update()
 
     def makeIndex(self, index, maxfields=2000,shards=16):
         try:
