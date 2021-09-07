@@ -91,14 +91,14 @@ class Kachok(object):
             "Posted a batch of {} in {} seconds".format(len(batch), delta))
         return errors
 
-    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None,progress=True):
+    def pumpJSONND(self, index, *logfiles, batchsize=3200, errordir=None,progress=True):
         """
         Pump new-line delimited JSON documents to elasticsearch
         Args:
             index: elasticsearch index
             logfiles: list of files to import
             batchsize: batch size per request
-            doctype: document type
+            doctype: document type - outdated since ES 7.0
             errordir: directory where to output errors (if unspecified, outputs to same directory as file)
             progress: display progress bar
         """        
@@ -125,7 +125,8 @@ class Kachok(object):
             fp = open(filepath,encoding="utf-8",errors='ignore')
             path = "{}/_bulk".format(index)
             accum = []
-            head = json.dumps({"index": {"_index": index, "_type": doctype}})
+            # head = json.dumps({"index": {"_index": index, "_type": doctype}})
+            head = json.dumps({"index": {"_index": index}})
             errors = []
             i=0
             try: 
