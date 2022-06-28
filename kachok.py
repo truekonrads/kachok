@@ -10,6 +10,7 @@ import glob
 # Disable ANSI colours on windows
 import os
 import sys
+import urllib3
 if os.name == 'nt':
     os.environ['ANSI_COLORS_DISABLED'] = "1"
 try:
@@ -39,12 +40,15 @@ class Kachok(object):
         headers = {'content-type': 'application/json', 'charset': 'UTF-8'}
         url = "{}/{}".format(self.endopoint, path)
         self.logger.debug("{}: {}".format(method, url))
+        if self.verify==False:            
+            urllib3.disable_warnings()
         response = method(
             url,
             headers=headers,
             auth=self.auth,
             data=data,
-            json=json)
+            json=json,
+            verify=False)
         if response.status_code != 200:
             self.logger.debug(response)
             self.logger.debug(response.json())
@@ -56,7 +60,18 @@ class Kachok(object):
             #index=None, 
             username=None, 
             password=None, 
-            debug=False):
+            debug=False,
+            verify=True):
+        """
+        
+        Args:
+            username: elasticsearch username
+            password: list of files to import
+            batchsize: batch size per request
+            doctype: document type
+            errordir: directory where to output errors (if unspecified, outputs to same directory as file)
+            progress: display progress bar
+        """     
         self.endopoint = endpoint
         if username and password:
             self.auth = HTTPBasicAuth(username, password)
@@ -68,6 +83,7 @@ class Kachok(object):
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
+        self.verify=verify
 
     def _postBatch(self, path, batch):
         then = datetime.now()
@@ -102,6 +118,9 @@ class Kachok(object):
             errordir: directory where to output errors (if unspecified, outputs to same directory as file)
             progress: display progress bar
         """        
+        if len(logfiles)==0:
+            self.logger.error("No log files specified")
+            return
         all_logs = [item for sublist in [
                     glob.glob(k,recursive=True) for k in logfiles] 
                     for item in sublist]
@@ -125,7 +144,9 @@ class Kachok(object):
             fp = open(filepath,encoding="utf-8",errors='ignore')
             path = "{}/_bulk".format(index)
             accum = []
-            head = json.dumps({"index": {"_index": index, "_type": doctype}})
+            head = json.dumps({"index": {"_index": index
+            # , "_type": doctype
+            }})
             errors = []
             i=0
             try: 
@@ -160,6 +181,13 @@ class Kachok(object):
                 filebar.update()
 
     def makeIndex(self, index, maxfields=2000,shards=16):
+        """
+        Create a new index. You want to use this before importing data
+        Args:
+            index: elasticsearch index
+            maxfields: maximum number of fields in index, set this to high value
+            shards: number of shards for the index            
+        """     
         try:
             indexsettings = {
             'settings': {
