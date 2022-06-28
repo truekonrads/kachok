@@ -145,7 +145,7 @@ class Kachok(object):
                 fp=open(filepath,encoding="utf-8",errors='ignore',
                 #transport_params={'client': client}
                 )
-                print("Opening s3")
+                # print("Opening s3")
             else:                
                 if not os.path.isfile(filepath):
                     self.logger.warning(f"Skipping `{filepath}` as it is not a file")
