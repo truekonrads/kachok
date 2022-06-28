@@ -8,6 +8,8 @@ fire = "*"
 tqdm = "*"
 ujson = "*"
 requests = "*"
+smart-open = {extras = ["s3"], version = "*"}
+
 [dev-packages]
 
 [requires]

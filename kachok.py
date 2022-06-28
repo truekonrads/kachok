@@ -11,6 +11,8 @@ import glob
 import os
 import sys
 import urllib3
+from smart_open import open
+import boto3
 if os.name == 'nt':
     os.environ['ANSI_COLORS_DISABLED'] = "1"
 try:
@@ -19,6 +21,7 @@ except ImportError:
     print("WARNING: ujson not found, install it for better performance")
     import json
 from tqdm import tqdm
+from urllib.parse import urlparse
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -124,24 +127,43 @@ class Kachok(object):
         all_logs = [item for sublist in [
                     glob.glob(k,recursive=True) for k in logfiles] 
                     for item in sublist]
+        for f in logfiles:
+            if f.startswith("s3://"):
+                all_logs.append(f)            
         files = sorted(set(all_logs))
-
+        # print(files)
         if progress:
             filebar=tqdm(desc='Files',total=len(files))
             linebar=tqdm()
 
         for filepath in files:
-            if not os.path.isfile(filepath):
-                self.logger.warning(f"Skipping `{filepath}` as it is not a file")
-                continue
+
+            if filepath.startswith("s3://"):                
+                session=boto3.Session()
+                self.logger.debug(session.client('sts').get_caller_identity())
+                # client= session.client('s3')
+                fp=open(filepath,encoding="utf-8",errors='ignore',
+                #transport_params={'client': client}
+                )
+                print("Opening s3")
+            else:                
+                if not os.path.isfile(filepath):
+                    self.logger.warning(f"Skipping `{filepath}` as it is not a file")
+                    continue
+                fp = open(filepath,encoding="utf-8",errors='ignore')
             msg=f"Processing `{filepath}`"
             if progress:
                 filebar.set_description_str(msg)
-                linebar.reset(total=os.path.getsize(filepath))
+                if filepath.startswith("s3://"):
+                    p=urlparse(filepath)                    
+                    total=session.resource('s3').Object(p.netloc,p.path[1:]).content_length
+                else:
+                    total=os.path.getsize(filepath)
+                linebar.reset(total=total)
             else:
                 self.logger.info(msg)
 
-            fp = open(filepath,encoding="utf-8",errors='ignore')
+            
             path = "{}/_bulk".format(index)
             accum = []
             head = json.dumps({"index": {"_index": index
