@@ -1,0 +1,12 @@
+{"TimeGenerated": "2021-06-21T14:29:06.600615", "EventData": {"Data": "NTDS,389,636"}, "SourceName": "ADWS", "Id": 1200, "EventType": "4", "ComputerName": "SomeServer.domain", "data": ["NTDS,389,636"], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:29:06.053739", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1100, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:29:05.350614", "EventData": {"Data": "SomeServer.domain"}, "SourceName": "ADWS", "Id": 1401, "EventType": "4", "ComputerName": "SomeServer.domain", "data": ["SomeServer.domain"], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:29:03.506863", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1008, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:29:03.084988", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1100, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:29:01.663115", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1000, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:15:39.051707", "EventData": {"Data": "GC,3268,3269"}, "SourceName": "ADWS", "Id": 1200, "EventType": "4", "ComputerName": "SomeServer.domain", "data": ["GC,3268,3269"], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:14:42.457687", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1004, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:14:42.254539", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1006, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:14:38.738915", "EventData": {"Data": "NTDS,389,636"}, "SourceName": "ADWS", "Id": 1200, "EventType": "4", "ComputerName": "SomeServer.domain", "data": ["NTDS,389,636"], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:14:37.613914", "EventData": {"Data": ""}, "SourceName": "ADWS", "Id": 1100, "EventType": "4", "ComputerName": "SomeServer.domain", "data": [""], "Description": ""}
+{"TimeGenerated": "2021-06-21T14:14:36.582666", "EventData": {"Data": "SomeServer.domain"}, "SourceName": "ADWS", "Id": 1401, "EventType": "4", "ComputerName": "SomeServer.domain", "data": ["SomeServer.domain"], "Description": ""}

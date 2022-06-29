@@ -13,6 +13,7 @@ import sys
 import urllib3
 from smart_open import open
 import boto3
+import time
 if os.name == 'nt':
     os.environ['ANSI_COLORS_DISABLED'] = "1"
 try:
@@ -189,7 +190,16 @@ class Kachok(object):
                 self.logger.error(f"Unable to decode Unicode {filepath}:{i}")
                 raise e
             if accum:  # Some left
-                errors.extend(self._postBatch(path, accum))
+                for timeout in (1,2,4,8,16,32,64): 
+                    try:
+                        e=self._postBatch(path, accum)
+                        errors.extend(e)
+                        break
+                    except KachokException as e:
+                        self.logger.warning(f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
+                        time.sleep(timeout)
+                else:
+                    raise KachokException("Backpressure continues, timed out after final sleep attempt")
             if errors:
                 if errordir:
                     errfile = PurePath(errordir,
