@@ -55,7 +55,10 @@ class Kachok(object):
             verify=self.verify)
         if response.status_code != 200:
             self.logger.debug(response)
-            self.logger.debug(response.json())
+            try:
+                self.logger.debug(response.json())
+            except:
+                self.logger.debug(response.text)
             raise KachokException(
                 "Status code for {} is not 200".format(url), response)
         return response
