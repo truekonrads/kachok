@@ -245,7 +245,8 @@ class Kachok(object):
         }
         self._put(index+"/_settings", json=indexsettings)
 
-
-if __name__ == "__main__":
+def main():
     from fire import Fire
     Fire(Kachok)
+if __name__ == "__main__":
+    main()
