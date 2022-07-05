@@ -178,16 +178,24 @@ class Kachok(object):
             try: 
                 while True:
                     line=fp.readline()
-                    if line=='':
-                        break
+                    if line=='': #If we have read all lines, then readline returns ''
+                        break    # so we exit when no more data
                     if progress:
                         linebar.update(len(line))
                     accum.append(head+"\n"+line)
                     if len(accum) >= batchsize:
-                       reqerr=self._postBatch(path, accum)
-                       self.logger.debug(f"Errors: {reqerr}")
-                       errors.extend(reqerr)
-                       accum = []
+                        for timeout in (1,2,4,8,16,32,64): 
+                            try: 
+                                reqerr=self._postBatch(path, accum)
+                                self.logger.debug(f"Errors: {reqerr}")
+                                errors.extend(reqerr)
+                                accum = []
+                                break
+                            except KachokException as e:
+                                self.logger.warning(f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
+                                time.sleep(timeout)
+                        else:
+                            raise KachokException("Backpressure continues, timed out after final sleep attempt")
                     i+=1
             except UnicodeError as e:
                 self.logger.error(f"Unable to decode Unicode {filepath}:{i}")

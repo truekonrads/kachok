@@ -57,6 +57,7 @@ class TestBackpressure(unittest.TestCase):
         self.mock_server_thread.start()
 
     def setUp(self) -> None:
+        MockServerRequestHandler.counter=0
         self._startHTTPServer()        
         return super().setUp()
     
@@ -68,6 +69,16 @@ class TestBackpressure(unittest.TestCase):
         k.pumpJSONND("fakeindex",fp,progress=False)
         time.sleep.assert_called_with(32)
         # self.skipTest("yolo")
+
+    def test_backupressure_large_batch(self):
+        endpoint=f"http://localhost:{self.mock_server_port}"
+        k=kachok.Kachok(endpoint)        
+        fp=str(PurePath(PurePath(__file__).parent,"sample_json.json",))
+        time.sleep=MagicMock()
+        k.pumpJSONND("fakeindex",fp,progress=False,batchsize=6)
+        time.sleep.assert_called_with(32)
+        # self.skipTest("yolo")
+
     def tearDown(self) -> None:
         self.mock_server.shutdown()
         return super().tearDown()
