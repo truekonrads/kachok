@@ -44,7 +44,7 @@ class Kachok(object):
         headers = {'content-type': 'application/json', 'charset': 'UTF-8'}
         url = "{}/{}".format(self.endopoint, path)
         self.logger.debug("{}: {}".format(method, url))
-        if self.verify==False:            
+        if self.verify == False:
             urllib3.disable_warnings()
         response = method(
             url,
@@ -63,14 +63,14 @@ class Kachok(object):
                 "Status code for {} is not 200".format(url), response)
         return response
 
-    def __init__(self, endpoint, 
-            #index=None, 
-            username=None, 
-            password=None, 
-            debug=False,
-            verify=True):
+    def __init__(self, endpoint,
+                 # index=None,
+                 username=None,
+                 password=None,
+                 debug=False,
+                 verify=True):
         """
-        
+
         Args:
             username: elasticsearch username
             password: list of files to import
@@ -78,7 +78,7 @@ class Kachok(object):
             doctype: document type
             errordir: directory where to output errors (if unspecified, outputs to same directory as file)
             progress: display progress bar
-        """     
+        """
         self.endopoint = endpoint
         if username and password:
             self.auth = HTTPBasicAuth(username, password)
@@ -90,7 +90,7 @@ class Kachok(object):
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
-        self.verify=verify
+        self.verify = verify
 
     def _postBatch(self, path, batch):
         then = datetime.now()
@@ -114,7 +114,7 @@ class Kachok(object):
             "Posted a batch of {} in {} seconds".format(len(batch), delta))
         return errors
 
-    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None,progress=True):
+    def pumpJSONND(self, index, *logfiles, batchsize=3200, doctype="securitylogs", errordir=None, progress=True, maxbytes=9*1024*1024):
         """
         Pump new-line delimited JSON documents to elasticsearch
         Args:
@@ -124,97 +124,105 @@ class Kachok(object):
             doctype: document type
             errordir: directory where to output errors (if unspecified, outputs to same directory as file)
             progress: display progress bar
-        """        
-        if len(logfiles)==0:
+        """
+        if len(logfiles) == 0:
             self.logger.error("No log files specified")
             return
         all_logs = [item for sublist in [
-                    glob.glob(k,recursive=True) for k in logfiles] 
+                    glob.glob(k, recursive=True) for k in logfiles]
                     for item in sublist]
         for f in logfiles:
             if f.startswith("s3://"):
-                all_logs.append(f)            
+                all_logs.append(f)
         files = sorted(set(all_logs))
         # print(files)
         if progress:
-            filebar=tqdm(desc='Files',total=len(files))
-            linebar=tqdm()
+            filebar = tqdm(desc='Files', total=len(files))
+            linebar = tqdm()
 
         for filepath in files:
 
-            if filepath.startswith("s3://"):                
-                session=boto3.Session()
+            if filepath.startswith("s3://"):
+                session = boto3.Session()
                 self.logger.debug(session.client('sts').get_caller_identity())
                 # client= session.client('s3')
-                fp=open(filepath,encoding="utf-8",errors='ignore',
-                #transport_params={'client': client}
-                )
+                fp = open(filepath, encoding="utf-8", errors='ignore',
+                          #transport_params={'client': client}
+                          )
                 # print("Opening s3")
-            else:                
+            else:
                 if not os.path.isfile(filepath):
-                    self.logger.warning(f"Skipping `{filepath}` as it is not a file")
+                    self.logger.warning(
+                        f"Skipping `{filepath}` as it is not a file")
                     continue
-                fp = open(filepath,encoding="utf-8",errors='ignore')
-            msg=f"Processing `{filepath}`"
+                fp = open(filepath, encoding="utf-8", errors='ignore')
+            msg = f"Processing `{filepath}`"
             if progress:
                 filebar.set_description_str(msg)
                 if filepath.startswith("s3://"):
-                    p=urlparse(filepath)                    
-                    total=session.resource('s3').Object(p.netloc,p.path[1:]).content_length
+                    p = urlparse(filepath)
+                    total = session.resource('s3').Object(
+                        p.netloc, p.path[1:]).content_length
                 else:
-                    total=os.path.getsize(filepath)
+                    total = os.path.getsize(filepath)
                 linebar.reset(total=total)
             else:
                 self.logger.info(msg)
 
-            
             path = "{}/_bulk".format(index)
             accum = []
+            current_bytes=0
             head = json.dumps({"index": {"_index": index
-            # , "_type": doctype
-            }})
+                                         # , "_type": doctype
+                                         }})
             errors = []
-            i=0
-            try: 
+            i = 0
+            try:
                 while True:
-                    line=fp.readline()
-                    if line=='': #If we have read all lines, then readline returns ''
+                    line = fp.readline()
+                    if line == '':  # If we have read all lines, then readline returns ''
                         break    # so we exit when no more data
                     if progress:
                         linebar.update(len(line))
                     accum.append(head+"\n"+line)
-                    if len(accum) >= batchsize:
-                        for timeout in (1,2,4,8,16,32,64): 
-                            try: 
-                                reqerr=self._postBatch(path, accum)
+                    current_bytes+=len(accum[-1])
+                    if len(accum) >= batchsize or current_bytes>=maxbytes:
+                        for timeout in (1, 2, 4, 8, 16, 32, 64):
+                            try:
+                                reqerr = self._postBatch(path, accum)
                                 self.logger.debug(f"Errors: {reqerr}")
                                 errors.extend(reqerr)
                                 accum = []
+                                current_bytes=0
                                 break
                             except KachokException as e:
-                                self.logger.warning(f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
+                                self.logger.warning(
+                                    f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
                                 time.sleep(timeout)
                         else:
-                            raise KachokException("Backpressure continues, timed out after final sleep attempt")
-                    i+=1
+                            raise KachokException(
+                                "Backpressure continues, timed out after final sleep attempt")
+                    i += 1
             except UnicodeError as e:
                 self.logger.error(f"Unable to decode Unicode {filepath}:{i}")
                 raise e
             if accum:  # Some left
-                for timeout in (1,2,4,8,16,32,64): 
+                for timeout in (1, 2, 4, 8, 16, 32, 64):
                     try:
-                        e=self._postBatch(path, accum)
+                        e = self._postBatch(path, accum)
                         errors.extend(e)
                         break
                     except KachokException as e:
-                        self.logger.warning(f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
+                        self.logger.warning(
+                            f"Error during batch post, sleeping for {timeout} seconds and retrying. Exception {e}")
                         time.sleep(timeout)
                 else:
-                    raise KachokException("Backpressure continues, timed out after final sleep attempt")
+                    raise KachokException(
+                        "Backpressure continues, timed out after final sleep attempt")
             if errors:
                 if errordir:
                     errfile = PurePath(errordir,
-                                    PurePath(filepath).name)
+                                       PurePath(filepath).name)
                 else:
                     errfile = filepath+".err"
                 errfp = open(errfile, "w")
@@ -223,22 +231,22 @@ class Kachok(object):
             if progress:
                 filebar.update()
 
-    def makeIndex(self, index, maxfields=2000,shards=16):
+    def makeIndex(self, index, maxfields=2000, shards=16):
         """
         Create a new index. You want to use this before importing data
         Args:
             index: elasticsearch index
             maxfields: maximum number of fields in index, set this to high value
             shards: number of shards for the index            
-        """     
+        """
         try:
             indexsettings = {
-            'settings': {
-                'index.number_of_shards': shards
+                'settings': {
+                    'index.number_of_shards': shards
+                }
             }
-        }
 
-            self._put(index,json=indexsettings)
+            self._put(index, json=indexsettings)
         except KachokException as e:
             response = e.args[1]
             assert type(response) == requests.Response
@@ -256,8 +264,11 @@ class Kachok(object):
         }
         self._put(index+"/_settings", json=indexsettings)
 
+
 def main():
     from fire import Fire
     Fire(Kachok)
+
+
 if __name__ == "__main__":
     main()
