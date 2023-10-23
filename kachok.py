@@ -185,7 +185,8 @@ class Kachok(object):
                     if progress:
                         linebar.update(len(line))
                     accum.append(head+"\n"+line)
-                    current_bytes+=len(accum[-1])
+                    current_bytes += len(line.encode('utf-8')) + len(head.encode('utf-8'))
+                    logger.debug(f"Current byte size of the requests {current_bytes}")
                     if len(accum) >= batchsize or current_bytes>=maxbytes:
                         for timeout in (1, 2, 4, 8, 16, 32, 64):
                             try:
