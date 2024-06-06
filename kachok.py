@@ -30,6 +30,8 @@ logging.basicConfig(
 class KachokException(Exception):
     pass
 
+class IndexAlreadyExists(KachokException):
+    pass
 
 class Kachok(object):
 
@@ -242,10 +244,11 @@ class Kachok(object):
         try:
             indexsettings = {
                 'settings': {
-                    'index.number_of_shards': shards
+                    'index.number_of_shards': shards,                            
+                    'index.mapping.total_fields.limit': maxfields,
                 }
             }
-
+            
             self._put(index, json=indexsettings)
         except KachokException as e:
             response = e.args[1]
@@ -253,16 +256,14 @@ class Kachok(object):
             if response.status_code == 400:
                 if e.args[1].json()['error']['type'] == "resource_already_exists_exception":
                     self.logger.debug("Index {} already exists".format(index))
+                    raise IndexAlreadyExists(index)                    
                 else:
                     raise e
             else:
                 raise e
-        indexsettings = {
-            'settings': {
-                'index.mapping.total_fields.limit': maxfields,
-            }
-        }
-        self._put(index+"/_settings", json=indexsettings)
+        # indexsettings = {
+        # }
+        # self._put(index+"/_settings", json=indexsettings)
 
 
 def main():
