@@ -57,12 +57,13 @@ class Kachok(object):
             verify=self.verify)
         if response.status_code != 200:
             self.logger.debug(response)
+            self.logger.debug(data)
             try:
                 self.logger.debug(response.json())
             except:
                 self.logger.debug(response.text)
             raise KachokException(
-                "Status code for {} is not 200".format(url), response)
+                "Status code for {} is not 200".format(url), response.status_code,response.reason)
         return response
 
     def __init__(self, endpoint,
@@ -96,7 +97,10 @@ class Kachok(object):
 
     def _postBatch(self, path, batch):
         then = datetime.now()
-        response = self._post(path, data="\n".join(batch).encode('utf8'))
+        data="\n".join(batch).encode('utf8')
+        if not data.endswith(b'\n'):
+            data += b'\n'
+        response = self._post(path, data=data)
         body = response.content
         errors = []
         if b'"errors":false' in body:
@@ -184,6 +188,10 @@ class Kachok(object):
                     line = fp.readline()
                     if line == '':  # If we have read all lines, then readline returns ''
                         break    # so we exit when no more data
+                    if line.strip()=='':
+                        #Skip over empty lines
+                        continue
+                    
                     if progress:
                         linebar.update(len(line))
                     accum.append(head+"\n"+line)
